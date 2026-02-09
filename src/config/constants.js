@@ -1,9 +1,14 @@
 module.exports = {
   PORT: process.env.PORT || 3000,
+  NODE_ENV: process.env.NODE_ENV || 'development',
   API_PREFIX: '/api',
-  
-  MAX_NAME_LENGTH: 100,
-  MAX_DESCRIPTION_LENGTH: 500,
-  MIN_PRICE: 0,
-  MIN_QUANTITY: 0
+
+  // Validation limits
+  MAX_NAME_LENGTH: 200,
+  MAX_DESCRIPTION_LENGTH: 2000,
+  MAX_SKU_LENGTH: 50,
+
+  // Pagination defaults
+  DEFAULT_PAGE_SIZE: 50,
+  MAX_PAGE_SIZE: 200,
 };
