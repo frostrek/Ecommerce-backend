@@ -1,7 +1,6 @@
 const { query } = require('../database');
 
-/**
- * Base Repository - Shared database operations
+/* Base Repository - Shared database operations
  * Extend this class for specific entity repositories
  */
 class BaseRepository {
@@ -10,9 +9,7 @@ class BaseRepository {
         this.primaryKey = primaryKey;
     }
 
-    /**
-     * Find all records with optional filtering
-     */
+    /* Find all records with optional filtering */
     async findAll(options = {}) {
         const { limit = 100, offset = 0, orderBy = 'created_at', order = 'DESC' } = options;
         const result = await query(
@@ -22,9 +19,7 @@ class BaseRepository {
         return result.rows;
     }
 
-    /**
-     * Find a single record by primary key
-     */
+    /* Find a single record by primary key */
     async findById(id) {
         const result = await query(
             `SELECT * FROM ${this.tableName} WHERE ${this.primaryKey} = $1`,
@@ -33,9 +28,7 @@ class BaseRepository {
         return result.rows[0] || null;
     }
 
-    /**
-     * Find records by a specific field
-     */
+    /* Find records by a specific field */
     async findBy(field, value) {
         const result = await query(
             `SELECT * FROM ${this.tableName} WHERE ${field} = $1`,
@@ -44,9 +37,7 @@ class BaseRepository {
         return result.rows;
     }
 
-    /**
-     * Create a new record
-     */
+    /* Create a new record */
     async create(data) {
         const keys = Object.keys(data);
         const values = Object.values(data);
@@ -60,9 +51,7 @@ class BaseRepository {
         return result.rows[0];
     }
 
-    /**
-     * Update a record by primary key
-     */
+    /* Update a record by primary key */
     async update(id, data) {
         const keys = Object.keys(data);
         const values = Object.values(data);
@@ -75,9 +64,7 @@ class BaseRepository {
         return result.rows[0] || null;
     }
 
-    /**
-     * Delete a record by primary key
-     */
+    /* Delete a record by primary key */
     async delete(id) {
         const result = await query(
             `DELETE FROM ${this.tableName} WHERE ${this.primaryKey} = $1 RETURNING *`,
@@ -86,9 +73,6 @@ class BaseRepository {
         return result.rows[0] || null;
     }
 
-    /**
-     * Count total records
-     */
     async count() {
         const result = await query(`SELECT COUNT(*) FROM ${this.tableName}`);
         return parseInt(result.rows[0].count, 10);

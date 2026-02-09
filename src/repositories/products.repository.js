@@ -6,9 +6,7 @@ class ProductsRepository extends BaseRepository {
         super('inventory.products', 'product_id');
     }
 
-    /**
-     * Find product by SKU
-     */
+    /* Find product by SKU */
     async findBySku(sku) {
         const result = await query(
             'SELECT * FROM inventory.products WHERE sku = $1',
@@ -17,9 +15,7 @@ class ProductsRepository extends BaseRepository {
         return result.rows[0] || null;
     }
 
-    /**
-     * Find products by category
-     */
+    /* Find products by category */
     async findByCategory(category, limit = 50) {
         const result = await query(
             'SELECT * FROM inventory.products WHERE category = $1 ORDER BY created_at DESC LIMIT $2',
@@ -28,9 +24,7 @@ class ProductsRepository extends BaseRepository {
         return result.rows;
     }
 
-    /**
-     * Search products by name
-     */
+    /* Search products by name */
     async search(searchTerm, limit = 50) {
         const result = await query(
             `SELECT * FROM inventory.products 
@@ -41,9 +35,7 @@ class ProductsRepository extends BaseRepository {
         return result.rows;
     }
 
-    /**
-     * Get product with all related data (specifications, packaging, etc.)
-     */
+    /*Get product with all related data (specifications, packaging, etc.) */
     async findByIdWithDetails(productId) {
         const product = await this.findById(productId);
         if (!product) return null;
@@ -66,9 +58,7 @@ class ProductsRepository extends BaseRepository {
         };
     }
 
-    /**
-     * Duplicate a product
-     */
+    /* Duplicate a product */
     async duplicate(originalId, newSku, newName) {
         // 1. Get original product
         const original = await this.findById(originalId);
@@ -122,9 +112,7 @@ class ProductsRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Update stock quantity
-     */
+    /* Update stock quantity */
     async updateStock(id, quantity) {
         const result = await query(
             'UPDATE inventory.product_variants SET quantity = $1, updated_at = NOW() WHERE product_id = $2 RETURNING *',
@@ -134,9 +122,7 @@ class ProductsRepository extends BaseRepository {
         return result.rows[0];
     }
 
-    /**
-     * Get low stock products
-     */
+    /* Get low stock products */
     async findLowStock(threshold = 10) {
         // Placeholder for low stock logic
         return [];

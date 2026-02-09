@@ -1,6 +1,3 @@
--- Ecommerce Backend - Initial Database Schema
--- Run this file to set up the database: psql -U postgres -d ecommerce_db -f 001_initial_schema.sql
-
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE SCHEMA IF NOT EXISTS inventory;
