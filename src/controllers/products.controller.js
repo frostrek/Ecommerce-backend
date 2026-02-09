@@ -2,10 +2,7 @@ const productsRepository = require('../repositories/products.repository');
 const { sendSuccess, sendCreated, sendNotFound } = require('../utils/response');
 const asyncHandler = require('../middlewares/asyncHandler');
 
-/**
- * @desc    Get all products
- * @route   GET /api/products
- */
+/* GET /api/products */
 const getAllProducts = asyncHandler(async (req, res) => {
     const { limit = 100, offset = 0, category } = req.query;
 
@@ -19,10 +16,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
     sendSuccess(res, products, 'Products retrieved successfully');
 });
 
-/**
- * @desc    Get product by ID
- * @route   GET /api/products/:id
- */
+/* GET /api/products/:id */
 const getProductById = asyncHandler(async (req, res) => {
     const product = await productsRepository.findById(req.params.id);
 
@@ -33,10 +27,7 @@ const getProductById = asyncHandler(async (req, res) => {
     sendSuccess(res, product);
 });
 
-/**
- * @desc    Get product with all details (specs, packaging, variants, etc.)
- * @route   GET /api/products/:id/details
- */
+/* GET /api/products/:id/details  */
 const getProductDetails = asyncHandler(async (req, res) => {
     const product = await productsRepository.findByIdWithDetails(req.params.id);
 
@@ -47,10 +38,7 @@ const getProductDetails = asyncHandler(async (req, res) => {
     sendSuccess(res, product);
 });
 
-/**
- * @desc    Search products
- * @route   GET /api/products/search?q=term
- */
+/* GET /api/products/search?q=term */
 const searchProducts = asyncHandler(async (req, res) => {
     const { q, limit = 50 } = req.query;
 
@@ -62,10 +50,7 @@ const searchProducts = asyncHandler(async (req, res) => {
     sendSuccess(res, products, `Found ${products.length} products`);
 });
 
-/**
- * @desc    Create new product
- * @route   POST /api/products
- */
+/* POST /api/products */
 const createProduct = asyncHandler(async (req, res) => {
     const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use } = req.body;
 
@@ -89,10 +74,7 @@ const createProduct = asyncHandler(async (req, res) => {
     sendCreated(res, newProduct, 'Product created successfully');
 });
 
-/**
- * @desc    Update product
- * @route   PATCH /api/products/:id
- */
+/* PATCH /api/products/:id */
 const updateProduct = asyncHandler(async (req, res) => {
     const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use } = req.body;
 
@@ -116,10 +98,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     sendSuccess(res, updatedProduct, 'Product updated successfully');
 });
 
-/**
- * @desc    Delete product
- * @route   DELETE /api/products/:id
- */
+/* DELETE /api/products/:id */
 const deleteProduct = asyncHandler(async (req, res) => {
     const deletedProduct = await productsRepository.delete(req.params.id);
 
@@ -130,6 +109,53 @@ const deleteProduct = asyncHandler(async (req, res) => {
     sendSuccess(res, {}, 'Product deleted successfully');
 });
 
+/* GET /api/products/enums */
+const getEnums = (req, res) => {
+    const { WINE_TYPES, BOTTLE_SIZES, PRODUCT_STATUS, STOCK_STATUS } = require('../config/constants');
+    sendSuccess(res, {
+        wineTypes: WINE_TYPES,
+        bottleSizes: BOTTLE_SIZES,
+        productStatus: PRODUCT_STATUS,
+        stockStatus: STOCK_STATUS
+    });
+};
+
+/* POST /api/products/:id/duplicate */
+const duplicateProduct = asyncHandler(async (req, res) => {
+    const { newSku, newName } = req.body;
+    if (!newSku || !newName) {
+        const error = new Error('New SKU and Name are required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const newProduct = await productsRepository.duplicate(req.params.id, newSku, newName);
+    if (!newProduct) return sendNotFound(res, 'Original Product');
+
+    sendCreated(res, newProduct, 'Product duplicated successfully');
+});
+
+/* PATCH /api/products/:id/stock */
+const updateStock = asyncHandler(async (req, res) => {
+    const { quantity } = req.body;
+    if (quantity === undefined || quantity < 0) {
+        const error = new Error('Valid quantity is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const updated = await productsRepository.updateStock(req.params.id, quantity);
+    if (!updated) return sendNotFound(res, 'Product');
+
+    sendSuccess(res, updated, 'Stock updated successfully');
+});
+
+/* GET /api/products/low-stock-alerts */
+const getLowStockProducts = asyncHandler(async (req, res) => {
+    const products = await productsRepository.findLowStock();
+    sendSuccess(res, products);
+});
+
 module.exports = {
     getAllProducts,
     getProductById,
@@ -138,4 +164,8 @@ module.exports = {
     createProduct,
     updateProduct,
     deleteProduct,
+    getEnums,
+    duplicateProduct,
+    updateStock,
+    getLowStockProducts,
 };

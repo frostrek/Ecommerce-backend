@@ -21,4 +21,10 @@ router.post('/', createProduct);              // POST /api/products
 router.patch('/:id', updateProduct);          // PATCH /api/products/:id
 router.delete('/:id', deleteProduct);         // DELETE /api/products/:id
 
+// New features routes
+router.get('/enums', require('../controllers/products.controller').getEnums);
+router.get('/low-stock-alerts', require('../controllers/products.controller').getLowStockProducts);
+router.post('/:id/duplicate', require('../controllers/products.controller').duplicateProduct);
+router.patch('/:id/stock', require('../controllers/products.controller').updateStock);
+
 module.exports = router;
