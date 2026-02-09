@@ -11,6 +11,7 @@ CREATE TABLE inventory.products (
     category TEXT,
     sub_category TEXT,
     description TEXT,
+    price Numeric,
     unit_of_measure TEXT,
     intended_use TEXT,
     created_at TIMESTAMP DEFAULT NOW(),

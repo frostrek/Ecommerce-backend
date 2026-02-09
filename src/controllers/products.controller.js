@@ -52,7 +52,7 @@ const searchProducts = asyncHandler(async (req, res) => {
 
 /* POST /api/products */
 const createProduct = asyncHandler(async (req, res) => {
-    const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use } = req.body;
+    const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use, price } = req.body;
 
     if (!sku || !product_name) {
         const error = new Error('SKU and product_name are required');
@@ -69,6 +69,7 @@ const createProduct = asyncHandler(async (req, res) => {
         description,
         unit_of_measure,
         intended_use,
+        price,
     });
 
     sendCreated(res, newProduct, 'Product created successfully');
@@ -76,7 +77,7 @@ const createProduct = asyncHandler(async (req, res) => {
 
 /* PATCH /api/products/:id */
 const updateProduct = asyncHandler(async (req, res) => {
-    const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use } = req.body;
+    const { sku, product_name, brand, category, sub_category, description, unit_of_measure, intended_use, price } = req.body;
 
     // Build update object with only provided fields
     const updateData = {};
@@ -88,6 +89,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (unit_of_measure !== undefined) updateData.unit_of_measure = unit_of_measure;
     if (intended_use !== undefined) updateData.intended_use = intended_use;
+    if (price !== undefined) updateData.price = price;
 
     const updatedProduct = await productsRepository.update(req.params.id, updateData);
 
