@@ -1,26 +1,30 @@
 const express = require('express');
-const productRoutes = require('./routes/productRoutes');
+const cors = require('cors');
+const routes = require('./routes');
+const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler');
 
 const app = express();
 
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
+// Health check endpoint
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Inventory Management API',
+    message: 'Ecommerce Backend API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.use('/api/products', productRoutes);
+// API routes
+app.use('/api', routes);
 
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
-});
+// Error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;
