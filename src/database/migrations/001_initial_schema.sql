@@ -19,7 +19,7 @@ CREATE TABLE inventory.products (
 );
 
 -- Product specifications (dimensions, materials, etc.)
-CREATE TABLE inventory.product_specifications (
+CREATE TABLE IF NOT EXISTS inventory.product_specifications (
     spec_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES inventory.products(product_id) ON DELETE CASCADE,
     material TEXT,
@@ -35,7 +35,7 @@ CREATE TABLE inventory.product_specifications (
 );
 
 -- Product packaging information
-CREATE TABLE inventory.product_packaging (
+CREATE TABLE IF NOT EXISTS inventory.product_packaging (
     packaging_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES inventory.products(product_id) ON DELETE CASCADE,
     packaging_type TEXT,
@@ -49,7 +49,7 @@ CREATE TABLE inventory.product_packaging (
 );
 
 -- Product variants (size, color variations)
-CREATE TABLE inventory.product_variants (
+CREATE TABLE IF NOT EXISTS inventory.product_variants (
     variant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES inventory.products(product_id) ON DELETE CASCADE,
     variant_name TEXT,
@@ -60,7 +60,7 @@ CREATE TABLE inventory.product_variants (
 );
 
 -- Product compliance and manufacturer info
-CREATE TABLE inventory.product_compliance (
+CREATE TABLE IF NOT EXISTS inventory.product_compliance (
     compliance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES inventory.products(product_id) ON DELETE CASCADE,
     manufacturer_name TEXT,
@@ -74,7 +74,7 @@ CREATE TABLE inventory.product_compliance (
 );
 
 -- Product assets (images, videos, documents)
-CREATE TABLE inventory.product_assets (
+CREATE TABLE IF NOT EXISTS inventory.product_assets (
     asset_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES inventory.products(product_id) ON DELETE CASCADE,
     asset_type TEXT,
@@ -83,7 +83,8 @@ CREATE TABLE inventory.product_assets (
 );
 
 -- Create indexes for better query performance
-CREATE INDEX idx_products_sku ON inventory.products(sku);
-CREATE INDEX idx_products_category ON inventory.products(category);
-CREATE INDEX idx_product_variants_product_id ON inventory.product_variants(product_id);
-CREATE INDEX idx_product_assets_product_id ON inventory.product_assets(product_id);
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_products_sku ON inventory.products(sku);
+CREATE INDEX IF NOT EXISTS idx_products_category ON inventory.products(category);
+CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON inventory.product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_assets_product_id ON inventory.product_assets(product_id);

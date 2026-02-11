@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS inventory.stock_movements (
     previous_quantity INTEGER,
     new_quantity INTEGER,
     reason TEXT,
-    reference_id TEXT, -- e.g., Order ID or PO Number
+    reference_id TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_stock_movements_product_id ON inventory.stock_movements(product_id);
-CREATE INDEX idx_stock_movements_variant_id ON inventory.stock_movements(variant_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON inventory.stock_movements(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_variant_id ON inventory.stock_movements(variant_id);
