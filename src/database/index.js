@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({
+const poolConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'ecommerce_db',
@@ -8,8 +8,16 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD || '',
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-});
+    connectionTimeoutMillis: 10000,
+};
+
+if (process.env.DB_SSL === 'true') {
+    poolConfig.ssl = {
+        rejectUnauthorized: false
+    };
+}
+
+const pool = new Pool(poolConfig);
 
 // Test database connection
 const connectDB = async () => {

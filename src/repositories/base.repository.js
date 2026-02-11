@@ -40,7 +40,7 @@ class BaseRepository {
     /* Create a new record */
     async create(data) {
         const keys = Object.keys(data);
-        const values = Object.values(data);
+        const values = Object.values(data).map(val => val === undefined ? null : val);
         const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
         const columns = keys.join(', ');
 
