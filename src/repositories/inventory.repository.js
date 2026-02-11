@@ -21,7 +21,7 @@ class InventoryRepository extends BaseRepository {
 
             // 1. Get current stock
             const variantRes = await client.query(
-                'SELECT quantity FROM inventory.product_variants WHERE variant_id = $1 FOR UPDATE',
+                'SELECT stock_quantity FROM inventory.product_variants WHERE variant_id = $1 FOR UPDATE',
                 [variantId]
             );
 
@@ -29,7 +29,7 @@ class InventoryRepository extends BaseRepository {
                 throw new Error('Variant not found');
             }
 
-            const currentQuantity = variantRes.rows[0].quantity || 0;
+            const currentQuantity = variantRes.rows[0].stock_quantity || 0;
             const newQuantity = currentQuantity + quantityChange;
 
             if (newQuantity < 0) {
@@ -38,7 +38,7 @@ class InventoryRepository extends BaseRepository {
 
             // 2. Update variant stock
             await client.query(
-                'UPDATE inventory.product_variants SET quantity = $1, updated_at = NOW() WHERE variant_id = $2',
+                'UPDATE inventory.product_variants SET stock_quantity = $1, updated_at = NOW() WHERE variant_id = $2',
                 [newQuantity, variantId]
             );
 
