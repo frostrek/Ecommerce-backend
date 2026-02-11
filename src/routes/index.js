@@ -6,6 +6,7 @@ const productsRoutes = require('./products.routes');
 
 // Mount routes
 router.use('/products', productsRoutes);
+router.use('/inventory', require('./inventory.routes'));
 
 // Future routes (uncomment when ready)
 // router.use('/users', usersRoutes);
