@@ -115,7 +115,7 @@ class ProductsRepository extends BaseRepository {
     /* Update stock quantity */
     async updateStock(id, quantity) {
         const result = await query(
-            'UPDATE inventory.product_variants SET quantity = $1, updated_at = NOW() WHERE product_id = $2 RETURNING *',
+            'UPDATE inventory.product_variants SET stock_quantity = $1, updated_at = NOW() WHERE product_id = $2 RETURNING *',
             [quantity, id]
         );
         // Also update main product if needed (depending on schema design, keeping simple for now)

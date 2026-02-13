@@ -12,7 +12,7 @@ router.use('/cart', cartRoutes);
 
 // Future routes (uncomment when ready)
 // router.use('/users', usersRoutes);
-// router.use('/orders', ordersRoutes);
+router.use('/orders', require('./orders.routes'));
 // router.use('/auth', authRoutes);
 
 module.exports = router;

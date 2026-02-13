@@ -1,8 +1,4 @@
-/**
- * Simple Logger Utility
- * Provides consistent logging with timestamps
- * Can be extended to use winston/pino for production
- */
+
 const colors = {
     reset: '\x1b[0m',
     green: '\x1b[32m',

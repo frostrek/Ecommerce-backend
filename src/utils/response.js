@@ -1,6 +1,6 @@
-/**
- * Standard API Response Helpers
- * Provides consistent response format across all endpoints
+/*
+ Standard API Response Helpers
+ Provides consistent response format across all endpoints
  */
 const sendSuccess = (res, data, message = 'Success', statusCode = 200) => {
     res.status(statusCode).json({

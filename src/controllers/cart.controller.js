@@ -2,11 +2,6 @@ const cartRepository = require('../repositories/cart.repository');
 const { sendSuccess, sendCreated, sendNotFound } = require('../utils/response');
 const asyncHandler = require('../middlewares/asyncHandler');
 
-/**
- * POST /api/cart
- * Create a new cart or return existing one for a customer.
- * Body: { customer_id? }
- */
 const createCart = asyncHandler(async (req, res) => {
     const { customer_id } = req.body;
 
@@ -19,11 +14,7 @@ const createCart = asyncHandler(async (req, res) => {
     sendSuccess(res, cart, 'Existing cart retrieved');
 });
 
-/**
- * POST /api/cart/items
- * Add item to cart.
- * Body: { cart_id, variant_id, quantity }
- */
+
 const addItem = asyncHandler(async (req, res) => {
     const { cart_id, variant_id, quantity } = req.body;
 

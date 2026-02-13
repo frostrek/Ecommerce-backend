@@ -1,5 +1,4 @@
 /**
- * Async Handler Middleware
  * Wraps async route handlers to catch errors and pass them to error handler
  * Eliminates the need for try/catch blocks in every controller
  */

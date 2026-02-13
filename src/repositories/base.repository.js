@@ -12,8 +12,19 @@ class BaseRepository {
     /* Find all records with optional filtering */
     async findAll(options = {}) {
         const { limit = 100, offset = 0, orderBy = 'created_at', order = 'DESC' } = options;
+
+        // Prevent SQL Injection: Validate order direction
+        const validOrderIndex = ['ASC', 'DESC'].indexOf(order.toUpperCase());
+        const sortOrder = validOrderIndex !== -1 ? order.toUpperCase() : 'DESC';
+
+        // Prevent SQL Injection: Validate orderBy column (simple alphanumeric check)
+        // ideally, subclasses should provide a whitelist of allowed columns
+        if (!/^[a-zA-Z0-9_]+$/.test(orderBy)) {
+            throw new Error('Invalid sort column');
+        }
+
         const result = await query(
-            `SELECT * FROM ${this.tableName} ORDER BY ${orderBy} ${order} LIMIT $1 OFFSET $2`,
+            `SELECT * FROM ${this.tableName} ORDER BY "${orderBy}" ${sortOrder} LIMIT $1 OFFSET $2`,
             [limit, offset]
         );
         return result.rows;

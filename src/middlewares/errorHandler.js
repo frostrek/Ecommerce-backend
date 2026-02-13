@@ -35,10 +35,7 @@ const errorHandler = (err, req, res, next) => {
     });
 };
 
-/**
- * Not Found Handler
- * Returns 404 for undefined routes
- */
+/* Returns 404 for undefined routes */
 const notFoundHandler = (req, res) => {
     res.status(404).json({
         success: false,
