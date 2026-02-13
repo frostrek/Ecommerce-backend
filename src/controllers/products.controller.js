@@ -137,7 +137,7 @@ const duplicateProduct = asyncHandler(async (req, res) => {
     sendCreated(res, newProduct, 'Product duplicated successfully');
 });
 
-/* PATCH /api/products/:id/stock */
+/* PATCH /api/products/:id/stock  */
 const updateStock = asyncHandler(async (req, res) => {
     const { quantity } = req.body;
     if (quantity === undefined || quantity < 0) {
