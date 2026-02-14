@@ -147,6 +147,56 @@ class AuthRepository {
         await query('DELETE FROM inventory.customer_sessions WHERE expires_at <= NOW()');
     }
 
+    // ─── Password management ──────────────────────────────────────
+
+    /**
+     * Update the password hash for a customer.
+     */
+    async updatePassword(customerId, newPasswordHash) {
+        await query(
+            `UPDATE inventory.customer_auth
+             SET password_hash = $1
+             WHERE customer_id = $2`,
+            [newPasswordHash, customerId]
+        );
+    }
+
+    // ─── Account management ───────────────────────────────────────
+
+    /**
+     * Deactivate a customer's account and revoke all sessions.
+     */
+    async deactivateAccount(customerId) {
+        const client = await getClient();
+        try {
+            await client.query('BEGIN');
+            await client.query(
+                'UPDATE inventory.customers SET is_active = FALSE WHERE customer_id = $1',
+                [customerId]
+            );
+            await client.query(
+                'DELETE FROM inventory.customer_sessions WHERE customer_id = $1',
+                [customerId]
+            );
+            await client.query('COMMIT');
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Reactivate a customer's account.
+     */
+    async reactivateAccount(customerId) {
+        await query(
+            'UPDATE inventory.customers SET is_active = TRUE WHERE customer_id = $1',
+            [customerId]
+        );
+    }
+
     // ─── Social-login helpers ──────────────────────────────────────
 
     /**

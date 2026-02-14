@@ -276,10 +276,91 @@ const getMe = asyncHandler(async (req, res) => {
     }, 'Profile fetched');
 });
 
+// ─── Change Password (protected) ──────────────────────────────────
+
+const changePassword = asyncHandler(async (req, res) => {
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+        const err = new Error('current_password and new_password are required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    if (new_password.length < 8) {
+        const err = new Error('New password must be at least 8 characters');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    // 1. Verify current password
+    const auth = await authRepo.getAuthByCustomerId(req.user.customer_id);
+    if (!auth) {
+        const err = new Error('Auth record not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const isMatch = await bcrypt.compare(current_password, auth.password_hash);
+    if (!isMatch) {
+        const err = new Error('Current password is incorrect');
+        err.statusCode = 401;
+        throw err;
+    }
+
+    // 2. Hash new password and update
+    const newHash = await bcrypt.hash(new_password, authConfig.bcryptSaltRounds);
+    await authRepo.updatePassword(req.user.customer_id, newHash);
+
+    // 3. Revoke all sessions (force re-login on all devices)
+    await authRepo.revokeAllRefreshTokens(req.user.customer_id);
+
+    // 4. Issue fresh tokens for this session
+    const customer = await customersRepo.findById(req.user.customer_id);
+    const accessToken = signAccessToken(customer);
+    const refreshToken = signRefreshToken(customer);
+    await authRepo.saveRefreshToken(customer.customer_id, refreshToken, refreshTokenExpiresAt());
+
+    setTokenCookies(res, accessToken, refreshToken);
+
+    sendSuccess(res, { access_token: accessToken }, 'Password changed. All other sessions logged out.');
+});
+
+// ─── Deactivate Account (protected) ──────────────────────────────
+
+const deactivateAccount = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+
+    if (!password) {
+        const err = new Error('Password is required to deactivate account');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    // Verify password before deactivation
+    const auth = await authRepo.getAuthByCustomerId(req.user.customer_id);
+    const isMatch = await bcrypt.compare(password, auth.password_hash);
+    if (!isMatch) {
+        const err = new Error('Incorrect password');
+        err.statusCode = 401;
+        throw err;
+    }
+
+    await authRepo.deactivateAccount(req.user.customer_id);
+
+    // Clear cookies
+    res.clearCookie('access_token', { ...authConfig.cookie });
+    res.clearCookie('refresh_token', { ...authConfig.cookie, path: '/api/auth' });
+
+    sendSuccess(res, {}, 'Account deactivated. You can reactivate by contacting support.');
+});
+
 module.exports = {
     register,
     login,
     refreshToken: refreshTokenHandler,
     logout,
     getMe,
+    changePassword,
+    deactivateAccount,
 };

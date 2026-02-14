@@ -6,10 +6,14 @@ const {
     getOrderById,
     updateOrderStatus,
     updatePaymentStatus,
+    directOrder,
 } = require('../controllers/orders.controller');
 
 // Checkout (Cart → Order)
 router.post('/checkout', checkout);          // POST   /api/orders/checkout
+
+// Direct Checkout (no backend cart required — for localStorage frontends)
+router.post('/direct', directOrder);         // POST   /api/orders/direct
 
 // Order listing
 router.get('/', getOrders);                  // GET    /api/orders?customer_id=&status=&limit=&offset=

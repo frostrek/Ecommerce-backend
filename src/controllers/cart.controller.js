@@ -83,25 +83,26 @@ const removeItem = asyncHandler(async (req, res) => {
  */
 const getCart = asyncHandler(async (req, res) => {
     const { cart_id, customer_id } = req.query;
+    const { cartId: pathCartId } = req.params; // Support /api/cart/:cartId
 
-    let cartId = cart_id;
+    let targetCartId = pathCartId || cart_id;
 
     // If customer_id provided instead of cart_id, find the customer's cart
-    if (!cartId && customer_id) {
+    if (!targetCartId && customer_id) {
         const cart = await cartRepository.findByCustomerId(customer_id);
         if (!cart) {
             return sendNotFound(res, 'Cart');
         }
-        cartId = cart.cart_id;
+        targetCartId = cart.cart_id;
     }
 
-    if (!cartId) {
+    if (!targetCartId) {
         const error = new Error('cart_id or customer_id is required');
         error.statusCode = 400;
         throw error;
     }
 
-    const fullCart = await cartRepository.getCartWithItems(cartId);
+    const fullCart = await cartRepository.getCartWithItems(targetCartId);
     if (!fullCart) {
         return sendNotFound(res, 'Cart');
     }

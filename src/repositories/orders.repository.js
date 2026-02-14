@@ -175,6 +175,223 @@ class OrdersRepository extends BaseRepository {
     }
 
     /**
+     * DIRECT CHECKOUT: Create an order without requiring a backend cart.
+     * Designed for frontends that manage cart in localStorage.
+     * 
+     * Uses the SAME orders + order_items tables as cart checkout,
+     * so when frontend migrates to backend cart, data is 100% compatible.
+     *
+     * @param {object} params
+     * @param {string} params.customer_id - Required for registered users, null for guest
+     * @param {string|null} params.customer_email - For guest orders
+     * @param {string|null} params.customer_name - For guest orders
+     * @param {Array} params.items - [{ product_id, variant_id?, quantity, unit_price? }]
+     * @param {object|null} params.shipping_address - Inline address { address_line1, city, state, pincode }
+     * @param {string|null} params.shipping_address_id - Or use saved address
+     * @param {string} params.payment_method - e.g. 'cod', 'online'
+     * @param {string|null} params.order_notes
+     */
+    async directCheckout({
+        customer_id = null,
+        customer_email = null,
+        customer_name = null,
+        items,
+        shipping_address = null,
+        shipping_address_id = null,
+        payment_method = 'cod',
+        order_notes = null,
+    }) {
+        if (!items || items.length === 0) {
+            const err = new Error('At least one item is required');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const client = await getClient();
+        try {
+            await client.query('BEGIN');
+
+            // 1. Resolve customer (if customer_id provided)
+            let resolvedCustomerId = customer_id;
+
+            if (customer_id) {
+                const custRes = await client.query(
+                    'SELECT customer_id, is_age_verified FROM inventory.customers WHERE customer_id = $1',
+                    [customer_id]
+                );
+                if (custRes.rows.length === 0) {
+                    const err = new Error('Customer not found');
+                    err.statusCode = 404;
+                    throw err;
+                }
+                if (!custRes.rows[0].is_age_verified) {
+                    const err = new Error('Age verification required before checkout');
+                    err.statusCode = 403;
+                    throw err;
+                }
+            }
+
+            // 2. Handle shipping address — save inline address if provided
+            let resolvedAddressId = shipping_address_id;
+
+            if (shipping_address && !shipping_address_id && resolvedCustomerId) {
+                const addrRes = await client.query(
+                    `INSERT INTO inventory.customer_addresses
+                        (customer_id, address_line1, address_line2, city, state, pincode, country)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                     RETURNING address_id`,
+                    [
+                        resolvedCustomerId,
+                        shipping_address.address_line1,
+                        shipping_address.address_line2 || null,
+                        shipping_address.city,
+                        shipping_address.state,
+                        shipping_address.pincode,
+                        shipping_address.country || 'India',
+                    ]
+                );
+                resolvedAddressId = addrRes.rows[0].address_id;
+            }
+
+            // 3. Resolve items: product_id → variant_id (pick default variant)
+            let totalAmount = 0;
+            let totalTax = 0;
+            const resolvedItems = [];
+
+            for (const item of items) {
+                let variantRow;
+
+                if (item.variant_id) {
+                    // Frontend provided variant_id directly — use it
+                    const vRes = await client.query(
+                        `SELECT pv.*, p.product_name FROM inventory.product_variants pv
+                         JOIN inventory.products p ON pv.product_id = p.product_id
+                         WHERE pv.variant_id = $1 FOR UPDATE`,
+                        [item.variant_id]
+                    );
+                    variantRow = vRes.rows[0];
+                } else if (item.product_id) {
+                    // Resolve: pick first active variant for this product
+                    const vRes = await client.query(
+                        `SELECT pv.*, p.product_name FROM inventory.product_variants pv
+                         JOIN inventory.products p ON pv.product_id = p.product_id
+                         WHERE pv.product_id = $1 AND pv.is_active = TRUE
+                         ORDER BY pv.created_at ASC
+                         LIMIT 1
+                         FOR UPDATE`,
+                        [item.product_id]
+                    );
+                    variantRow = vRes.rows[0];
+
+                    if (!variantRow) {
+                        // No variant exists — create a default one from the product
+                        const prodRes = await client.query(
+                            'SELECT product_id, product_name, price FROM inventory.products WHERE product_id = $1',
+                            [item.product_id]
+                        );
+                        if (prodRes.rows.length === 0) {
+                            const err = new Error(`Product not found: ${item.product_id}`);
+                            err.statusCode = 404;
+                            throw err;
+                        }
+
+                        const prod = prodRes.rows[0];
+                        const newVariant = await client.query(
+                            `INSERT INTO inventory.product_variants
+                                (product_id, variant_name, price, stock_quantity, is_active)
+                             VALUES ($1, $2, $3, 9999, TRUE)
+                             RETURNING *, $2 AS product_name`,
+                            [prod.product_id, 'Default', item.unit_price || prod.price || 0]
+                        );
+                        variantRow = { ...newVariant.rows[0], product_name: prod.product_name };
+                    }
+                } else {
+                    const err = new Error('Each item must have product_id or variant_id');
+                    err.statusCode = 400;
+                    throw err;
+                }
+
+                if (!variantRow) {
+                    const err = new Error(`Variant not found for item: ${JSON.stringify(item)}`);
+                    err.statusCode = 404;
+                    throw err;
+                }
+
+                // Stock check
+                const qty = parseInt(item.quantity) || 1;
+                if (variantRow.stock_quantity < qty) {
+                    const err = new Error(
+                        `Insufficient stock for "${variantRow.product_name}". Available: ${variantRow.stock_quantity}, Requested: ${qty}`
+                    );
+                    err.statusCode = 400;
+                    throw err;
+                }
+
+                // Price: use frontend price if provided, otherwise use variant price
+                const effectivePrice = parseFloat(item.unit_price || variantRow.discounted_price || variantRow.price || 0);
+                const lineSubtotal = effectivePrice * qty;
+                const taxRate = parseFloat(variantRow.tax_percentage || 0) / 100;
+                const lineTax = lineSubtotal * taxRate;
+
+                totalAmount += lineSubtotal;
+                totalTax += lineTax;
+
+                resolvedItems.push({
+                    variant_id: variantRow.variant_id,
+                    product_id: variantRow.product_id,
+                    quantity: qty,
+                    unit_price: effectivePrice,
+                    tax_amount: Math.round(lineTax * 100) / 100,
+                    stock_quantity: variantRow.stock_quantity,
+                });
+            }
+
+            totalAmount = Math.round(totalAmount * 100) / 100;
+            totalTax = Math.round(totalTax * 100) / 100;
+
+            // 4. Create order
+            const orderRes = await client.query(
+                `INSERT INTO inventory.orders
+                 (customer_id, shipping_address_id, total_amount, total_tax, order_status, payment_status, order_notes)
+                 VALUES ($1, $2, $3, $4, 'PENDING', 'UNPAID', $5)
+                 RETURNING *`,
+                [resolvedCustomerId, resolvedAddressId, totalAmount, totalTax, order_notes]
+            );
+            const order = orderRes.rows[0];
+
+            // 5. Create order items + deduct stock + log movements
+            for (const item of resolvedItems) {
+                await client.query(
+                    `INSERT INTO inventory.order_items (order_id, variant_id, quantity, unit_price, tax_amount)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [order.order_id, item.variant_id, item.quantity, item.unit_price, item.tax_amount]
+                );
+
+                const newStock = item.stock_quantity - item.quantity;
+                await client.query(
+                    'UPDATE inventory.product_variants SET stock_quantity = $1, updated_at = NOW() WHERE variant_id = $2',
+                    [newStock, item.variant_id]
+                );
+
+                await client.query(
+                    `INSERT INTO inventory.stock_movements
+                     (product_id, variant_id, quantity_change, previous_quantity, new_quantity, reason, reference_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [item.product_id, item.variant_id, -item.quantity, item.stock_quantity, newStock, 'ORDER_PLACED', order.order_id]
+                );
+            }
+
+            await client.query('COMMIT');
+            return this.findByIdWithItems(order.order_id);
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
      * Get a single order with its items and product details.
      */
     async findByIdWithItems(orderId) {

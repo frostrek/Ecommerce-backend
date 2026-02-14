@@ -110,10 +110,63 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
     sendSuccess(res, updated, 'Payment status updated');
 });
 
+/**
+ * POST /api/orders/direct
+ * Create an order directly without requiring a backend cart.
+ * Designed for frontends using localStorage cart.
+ * Body: { customer_id?, items: [{ product_id, quantity, unit_price? }], shipping_address?, payment_method? }
+ */
+const directOrder = asyncHandler(async (req, res) => {
+    const {
+        customer_id,
+        customer_email,
+        customer_name,
+        items,
+        shipping_address,
+        shipping_address_id,
+        payment_method,
+        order_notes,
+    } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        const error = new Error('items array is required and must not be empty');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Validate each item has at least product_id or variant_id + quantity
+    for (const item of items) {
+        if (!item.product_id && !item.variant_id) {
+            const error = new Error('Each item must have product_id or variant_id');
+            error.statusCode = 400;
+            throw error;
+        }
+        if (!item.quantity || item.quantity < 1) {
+            const error = new Error('Each item must have quantity >= 1');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+
+    const order = await ordersRepository.directCheckout({
+        customer_id: customer_id || null,
+        customer_email: customer_email || null,
+        customer_name: customer_name || null,
+        items,
+        shipping_address: shipping_address || null,
+        shipping_address_id: shipping_address_id || null,
+        payment_method: payment_method || 'cod',
+        order_notes: order_notes || null,
+    });
+
+    sendCreated(res, order, 'Order placed successfully');
+});
+
 module.exports = {
     checkout,
     getOrders,
     getOrderById,
     updateOrderStatus,
     updatePaymentStatus,
+    directOrder,
 };

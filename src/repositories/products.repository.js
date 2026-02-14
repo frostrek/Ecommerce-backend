@@ -35,6 +35,46 @@ class ProductsRepository extends BaseRepository {
         return result.rows;
     }
 
+    /* Find all with filters (status, brand, sort) */
+    async findAllFiltered({ limit = 100, offset = 0, status, brand, sort } = {}) {
+        const conditions = [];
+        const params = [];
+        let idx = 1;
+
+        if (status) {
+            conditions.push(`status = $${idx++}`);
+            params.push(status);
+        }
+        if (brand) {
+            conditions.push(`brand ILIKE $${idx++}`);
+            params.push(`%${brand}%`);
+        }
+
+        const whereClause = conditions.length > 0
+            ? 'WHERE ' + conditions.join(' AND ')
+            : '';
+
+        const validSorts = {
+            'newest': 'created_at DESC',
+            'oldest': 'created_at ASC',
+            'name_asc': 'product_name ASC',
+            'name_desc': 'product_name DESC',
+            'price_asc': 'price ASC NULLS LAST',
+            'price_desc': 'price DESC NULLS LAST',
+        };
+        const orderClause = validSorts[sort] || 'created_at DESC';
+
+        params.push(limit, offset);
+
+        const result = await query(
+            `SELECT * FROM inventory.products ${whereClause}
+             ORDER BY ${orderClause}
+             LIMIT $${idx++} OFFSET $${idx}`,
+            params
+        );
+        return result.rows;
+    }
+
     /*Get product with all related data (specifications, packaging, etc.) */
     async findByIdWithDetails(productId) {
         const product = await this.findById(productId);

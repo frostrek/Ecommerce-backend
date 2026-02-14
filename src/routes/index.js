@@ -17,4 +17,11 @@ router.use('/auth', require('./auth.routes'));
 router.use('/orders', require('./orders.routes'));
 router.use('/customers', require('./customers.routes'));
 
+// Wishlist & Reviews
+router.use('/wishlist', require('./wishlist.routes'));
+router.use('/reviews', require('./reviews.routes'));
+
+// Categories
+router.use('/categories', require('./categories.routes'));
+
 module.exports = router;

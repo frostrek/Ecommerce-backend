@@ -4,13 +4,19 @@ const asyncHandler = require('../middlewares/asyncHandler');
 
 /* GET /api/products */
 const getAllProducts = asyncHandler(async (req, res) => {
-    const { limit = 100, offset = 0, category } = req.query;
+    const { limit = 100, offset = 0, category, status, brand, sort } = req.query;
 
     let products;
     if (category) {
         products = await productsRepository.findByCategory(category, parseInt(limit));
     } else {
-        products = await productsRepository.findAll({ limit: parseInt(limit), offset: parseInt(offset) });
+        products = await productsRepository.findAllFiltered({
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            status,
+            brand,
+            sort,
+        });
     }
 
     sendSuccess(res, products, 'Products retrieved successfully');
