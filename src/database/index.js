@@ -1,5 +1,10 @@
 const { Pool } = require('pg');
 
+const dns = require('dns');
+
+// Force IPv4 resolution — Render resolves Supabase to IPv6 which is unreachable
+dns.setDefaultResultOrder('ipv4first');
+
 const poolConfig = {
     // Check if DATABASE_URL is provided (Render standard)
     ...(process.env.DATABASE_URL

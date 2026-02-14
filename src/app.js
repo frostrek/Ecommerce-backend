@@ -10,6 +10,9 @@ const { sanitizeInput } = require('./middlewares/sanitize.middleware');
 
 const app = express();
 
+// ─── Trust Proxy (required behind Render/Nginx reverse proxy) ─────
+app.set('trust proxy', 1);
+
 // ─── Security Headers ──────────────────────────────────────────────
 app.use(helmet());
 
@@ -17,23 +20,27 @@ app.use(helmet());
 app.use(globalLimiter);
 
 // ─── CORS ──────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
-  .split(',')
-  .map(o => o.trim());
+const corsOptions = {
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, server-to-server)
+if (process.env.CORS_ORIGIN) {
+  const allowedOrigins = process.env.CORS_ORIGIN.split(',').map(o => o.trim());
+  corsOptions.origin = (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  };
+} else {
+  // No CORS_ORIGIN set → allow all origins (dev / early production)
+  corsOptions.origin = true;
+}
+
+app.use(cors(corsOptions));
 
 // ─── Body Parsing ──────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
