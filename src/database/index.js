@@ -1,11 +1,17 @@
 const { Pool } = require('pg');
 
 const poolConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'ecommerce_db',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || '',
+    // Check if DATABASE_URL is provided (Render standard)
+    ...(process.env.DATABASE_URL
+        ? { connectionString: process.env.DATABASE_URL }
+        : {
+            host: process.env.DB_HOST || 'localhost',
+            port: process.env.DB_PORT || 5432,
+            database: process.env.DB_NAME || 'ecommerce_db',
+            user: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || '',
+        }
+    ),
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
