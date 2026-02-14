@@ -1,31 +1,38 @@
 /**
  * Global Error Handler Middleware
- * Catches all errors and returns consistent JSON response
+ *
+ * - In DEVELOPMENT: returns full error message + stack trace
+ * - In PRODUCTION:  returns sanitized message, logs full error server-side
+ *
+ * Handles PostgreSQL-specific error codes gracefully.
  */
-const errorHandler = (err, req, res, next) => {
-    console.error('Error:', err.message);
-    console.error('Stack:', err.stack);
+const logger = require('../utils/logger');
 
-    // PostgreSQL specific error handling
+const errorHandler = (err, req, res, next) => {
+    // Always log the full error server-side
+    logger.error(`[${req.method}] ${req.originalUrl} — ${err.message}`);
+    if (process.env.NODE_ENV === 'development') {
+        logger.debug('Stack:', err.stack);
+    }
+
     let statusCode = err.statusCode || 500;
     let message = err.message || 'Internal Server Error';
 
-    // Handle PostgreSQL unique constraint violation
+    // ── PostgreSQL Error Codes ──────────────────────────────────
     if (err.code === '23505') {
         statusCode = 400;
         message = 'Duplicate entry. This record already exists.';
-    }
-
-    // Handle PostgreSQL foreign key violation
-    if (err.code === '23503') {
+    } else if (err.code === '23503') {
         statusCode = 400;
         message = 'Referenced record does not exist.';
-    }
-
-    // Handle PostgreSQL invalid UUID
-    if (err.code === '22P02') {
+    } else if (err.code === '22P02') {
         statusCode = 400;
         message = 'Invalid ID format.';
+    }
+
+    // ── Sanitize in production: never leak raw DB / internal errors ──
+    if (process.env.NODE_ENV === 'production' && statusCode === 500) {
+        message = 'An unexpected error occurred. Please try again later.';
     }
 
     res.status(statusCode).json({
@@ -35,7 +42,7 @@ const errorHandler = (err, req, res, next) => {
     });
 };
 
-/* Returns 404 for undefined routes */
+/** Returns 404 for undefined routes */
 const notFoundHandler = (req, res) => {
     res.status(404).json({
         success: false,
