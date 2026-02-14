@@ -14,7 +14,7 @@ class InventoryRepository extends BaseRepository {
      * @param {string} reason - Reason for adjustment
      * @param {string} referenceId - Optional reference ID (e.g., Order #)
      */
-    async adjustStock(productId, variantId, quantityChange, reason, referenceId = null) {
+    async adjustStock(productId, variantId, quantityChange, reason, referenceId = null, recordHistory = true) {
         const client = await require('../database').pool.connect();
         try {
             await client.query('BEGIN');
@@ -42,17 +42,21 @@ class InventoryRepository extends BaseRepository {
                 [newQuantity, variantId]
             );
 
-            // 3. Log movement
-            const movementRes = await client.query(
-                `INSERT INTO inventory.stock_movements 
-                (product_id, variant_id, quantity_change, previous_quantity, new_quantity, reason, reference_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING *`,
-                [productId, variantId, quantityChange, currentQuantity, newQuantity, reason, referenceId]
-            );
+            // 3. Log movement (if enabled)
+            let movement = null;
+            if (recordHistory) {
+                const movementRes = await client.query(
+                    `INSERT INTO inventory.stock_movements 
+                    (product_id, variant_id, quantity_change, previous_quantity, new_quantity, reason, reference_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING *`,
+                    [productId, variantId, quantityChange, currentQuantity, newQuantity, reason, referenceId]
+                );
+                movement = movementRes.rows[0];
+            }
 
             await client.query('COMMIT');
-            return movementRes.rows[0];
+            return movement || { new_quantity: newQuantity };
 
         } catch (error) {
             await client.query('ROLLBACK');

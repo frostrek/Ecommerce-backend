@@ -21,9 +21,15 @@
   "homepage": "https://github.com/ritikajain-frost/Ecommerce-backend#readme",
   "description": "Ecommerce Backend API with Express and PostgreSQL",
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
     "pg": "^8.13.1"
   },
   "devDependencies": {

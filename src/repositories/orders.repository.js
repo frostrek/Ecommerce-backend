@@ -28,6 +28,24 @@ class OrdersRepository extends BaseRepository {
         try {
             await client.query('BEGIN');
 
+            // 0. Verify Customer Age
+            const customerRes = await client.query(
+                'SELECT is_age_verified FROM inventory.customers WHERE customer_id = $1',
+                [customerId]
+            );
+
+            if (customerRes.rows.length === 0) {
+                const err = new Error('Customer not found');
+                err.statusCode = 404;
+                throw err;
+            }
+
+            if (!customerRes.rows[0].is_age_verified) {
+                const err = new Error('Age verification required before checkout');
+                err.statusCode = 403;
+                throw err;
+            }
+
             // 1. Get cart items with variant + product details
             const cartItemsRes = await client.query(
                 `SELECT 
@@ -284,15 +302,71 @@ class OrdersRepository extends BaseRepository {
             throw err;
         }
 
-        const result = await query(
-            `UPDATE inventory.orders 
-             SET order_status = $1, updated_at = NOW()
-             WHERE order_id = $2
-             RETURNING *`,
-            [newStatus, orderId]
-        );
+        const client = await getClient();
+        try {
+            await client.query('BEGIN');
 
-        return result.rows[0] || null;
+            // 1. Get current order status
+            const orderRes = await client.query('SELECT order_status FROM inventory.orders WHERE order_id = $1 FOR UPDATE', [orderId]);
+            if (orderRes.rows.length === 0) {
+                throw new Error('Order not found');
+            }
+            const currentStatus = orderRes.rows[0].order_status;
+
+            if (currentStatus === 'CANCELLED') {
+                throw new Error('Order is already cancelled');
+            }
+
+            // 2. If cancelling, restore stock
+            if (newStatus === 'CANCELLED' && currentStatus !== 'CANCELLED') {
+                const itemsRes = await client.query(
+                    `SELECT oi.variant_id, oi.quantity, pv.product_id 
+                     FROM inventory.order_items oi
+                     JOIN inventory.product_variants pv ON oi.variant_id = pv.variant_id
+                     WHERE oi.order_id = $1`,
+                    [orderId]
+                );
+
+                for (const item of itemsRes.rows) {
+                    // Restore stock
+                    await client.query(
+                        'UPDATE inventory.product_variants SET stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE variant_id = $2',
+                        [item.quantity, item.variant_id]
+                    );
+
+                    // Log movement
+                    await client.query(
+                        `INSERT INTO inventory.stock_movements 
+                        (product_id, variant_id, quantity_change, reason, reference_id)
+                        VALUES ($1, $2, $3, $4, $5)`,
+                        [
+                            item.product_id,
+                            item.variant_id,
+                            item.quantity, // Positive change for restoration
+                            'ORDER_CANCELLED',
+                            orderId,
+                        ]
+                    );
+                }
+            }
+
+            // 3. Update status
+            const result = await client.query(
+                `UPDATE inventory.orders 
+                 SET order_status = $1
+                 WHERE order_id = $2
+                 RETURNING *`,
+                [newStatus, orderId]
+            );
+
+            await client.query('COMMIT');
+            return result.rows[0];
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     /**
@@ -309,7 +383,7 @@ class OrdersRepository extends BaseRepository {
 
         const result = await query(
             `UPDATE inventory.orders 
-             SET payment_status = $1, updated_at = NOW()
+             SET payment_status = $1
              WHERE order_id = $2
              RETURNING *`,
             [paymentStatus, orderId]

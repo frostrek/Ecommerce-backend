@@ -124,8 +124,21 @@ class ProductsRepository extends BaseRepository {
 
     /* Get low stock products */
     async findLowStock(threshold = 10) {
-        // Placeholder for low stock logic
-        return [];
+        const result = await query(
+            `SELECT 
+                pv.variant_id, 
+                pv.product_id, 
+                pv.variant_sku, 
+                pv.stock_quantity, 
+                p.product_name, 
+                pv.variant_name
+             FROM inventory.product_variants pv
+             JOIN inventory.products p ON pv.product_id = p.product_id
+             WHERE pv.stock_quantity <= $1
+             ORDER BY pv.stock_quantity ASC`,
+            [threshold]
+        );
+        return result.rows;
     }
 }
 

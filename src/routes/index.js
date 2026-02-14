@@ -10,9 +10,11 @@ router.use('/products', productsRoutes);
 router.use('/inventory', require('./inventory.routes'));
 router.use('/cart', cartRoutes);
 
-// Future routes (uncomment when ready)
-// router.use('/users', usersRoutes);
+// Auth
+router.use('/auth', require('./auth.routes'));
+
+// Orders & Customers
 router.use('/orders', require('./orders.routes'));
-// router.use('/auth', authRoutes);
+router.use('/customers', require('./customers.routes'));
 
 module.exports = router;
