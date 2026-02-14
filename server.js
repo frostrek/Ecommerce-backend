@@ -1,3 +1,7 @@
+// Force IPv4 — MUST be first line before any DB imports
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 require('dotenv').config();
 const app = require('./src/app');
 const { connectDB, pool } = require('./src/database');
